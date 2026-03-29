@@ -1,8 +1,8 @@
 import albumentations as A
 import cv2
 
-crop_size = int(256*0.8)
-final_size = int(256)
+crop_size = int(512*0.8)
+final_size = int(512)
 
 augment = A.Compose(
     [

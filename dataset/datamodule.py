@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import torch
 import torch.nn.functional as F
 from torch.utils.data import random_split, DataLoader
@@ -8,6 +10,7 @@ from torchmetrics.classification import MulticlassJaccardIndex
 
 from sklearn.model_selection import train_test_split
 
+from dataset.dataset import SegmentationDataset
 from models.deeplabv3 import build_deeplabv3plus
 from utils.albumentation import augment
 from utils.losses import FocalDiceLoss
@@ -18,8 +21,7 @@ from typing import Any
 class SegmentationModule(pl.LightningModule):
     def __init__(
         self,
-        images, 
-        masks,
+        data_dir: str | Path,
         num_classes: int,
         in_channels: int,
         ignore_index: int = 0,
@@ -30,9 +32,7 @@ class SegmentationModule(pl.LightningModule):
         ):
         super().__init__()
         
-        self.images = images
-        self.masks = masks
-        
+        self.data_dir = Path(data_dir)
         self.ignore_index = ignore_index
         self.augment = augment
         self.batch_size = batch_size
@@ -76,9 +76,58 @@ class SegmentationModule(pl.LightningModule):
     
     def setup(self, stage=None):
         if stage in ("fit", None):
-            X, Y = random_split(
-                dataset=self.images,
-                lengths=[0.8, 0.2],
-                generator=torch.Generator.manual_seed(42)
+            # Create dataset instance
+            full_dataset = SegmentationDataset(
+                images_dir = self.data_dir / "flair_1_toy_aerial_train",
+                masks_dir = self.data_dir / "flair_1_toy_labels_train",
+                augment = self.augment
+            )
+            print(f"len full data{len(full_dataset)}")
+            
+            # Split dataset
+            self.train_dataset, self.val_dataset = random_split(
+                dataset = full_dataset,
+                lengths = [0.8, 0.2],
+                generator = torch.Generator().manual_seed(42)
             )
             
+            # Set augment for val datasets to None
+            self.val_dataset.augment = None
+            
+            
+        if stage in ("test", None):
+            self.test_dataset = SegmentationDataset(
+                images_dir = self.data_dir / "flair_1_toy_aerial_test",
+                masks_dir = self.data_dir / "flair_1_toy_labels_test",
+                augment = None
+            )
+            
+            
+    # Define dataloaders
+    def train_dataloader(self):
+        return DataLoader(
+            dataset=self.train_dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=self.num_workers,
+            pin_memory=True,
+            persistent_workers=True,
+            prefetch_factor=2
+        )
+    
+    def val_dataloader(self):
+        return DataLoader(
+            dataset=self.val_dataset,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            pin_memory=True
+        )
+    
+    def test_dataloader(self):
+        return DataLoader(
+            dataset=self.test_dataset,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            pin_memory=True
+            
+        )

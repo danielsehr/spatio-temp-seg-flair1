@@ -41,7 +41,7 @@ class SegmentationModule(pl.LightningModule):
         self.in_channels = in_channels
         self.learning_rate = learning_rate
         
-        self.save_hyperparameters(ignore=["images", "masks"])    
+        self.save_hyperparameters()    
         
         
         # Model
@@ -79,7 +79,7 @@ class SegmentationModule(pl.LightningModule):
             # Create dataset instance
             full_dataset = SegmentationDataset(
                 images_dir = self.data_dir / "flair_1_toy_aerial_train",
-                masks_dir = self.data_dir / "flair_1_toy_labels_train",
+                masks_dir = self.data_dir / "flair_1_toy_labels_train_remap",
                 augment = self.augment,
                 transform = transform
             )
@@ -101,7 +101,7 @@ class SegmentationModule(pl.LightningModule):
         if stage in ("test", None):
             self.test_dataset = SegmentationDataset(
                 images_dir = self.data_dir / "flair_1_toy_aerial_test",
-                masks_dir = self.data_dir / "flair_1_toy_labels_test",
+                masks_dir = self.data_dir / "flair_1_toy_labels_test_remap",
                 augment = None,
                 transform=transform
             )
@@ -116,7 +116,7 @@ class SegmentationModule(pl.LightningModule):
             shuffle=True,
             num_workers=self.num_workers,
             pin_memory=True,
-            persistent_workers=True,
+            # persistent_workers=True,
             prefetch_factor=2
         )
     
@@ -136,3 +136,83 @@ class SegmentationModule(pl.LightningModule):
             pin_memory=True
             
         )
+    
+
+
+    def forward(self, x):
+        return self.model(x)  # SMP returns logits directly
+
+    
+    def training_step(self, batch, batch_idx):
+        images, masks = batch
+        logits = self(images)
+        loss = self.criterion(logits, masks)
+
+        preds = torch.argmax(logits, dim=1)
+        self.train_iou(preds, masks)
+        
+        self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log("train_iou", self.train_iou, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
+
+        return loss
+    
+    def validation_step(self, batch, batch_idx):
+        images, masks = batch
+        logits = self(images)
+        loss = self.criterion(logits, masks)
+
+        preds = torch.argmax(logits, dim=1)
+        self.val_iou(preds, masks)
+        
+        self.log("val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log("val_iou", self.val_iou, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)        
+
+        return loss
+    
+    def test_step(self, batch, batch_idx):
+        images, masks = batch
+        logits = self(images)
+        loss = self.criterion(logits, masks)
+
+        preds = torch.argmax(logits, dim=1)
+        self.test_iou(preds, masks)
+        
+        self.log("test_loss", loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log("test_iou", self.test_iou, on_epoch=True, prog_bar=True, sync_dist=True)
+
+        return loss
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(
+            self.parameters(),
+            lr=self.learning_rate,
+            weight_decay=1e-4
+        )
+
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode="min",
+            factor=0.5,
+            patience=3
+        )
+        
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "monitor": "val_loss",
+                "interval": "epoch",
+                "frequency": 1,
+            }
+        }
+
+
+    def on_train_epoch_end(self):
+        opt = self.optimizers()
+        self.log("lr", opt.param_groups[0]["lr"], prog_bar=True, sync_dist=True)
+
+
+    def predict_step(self, batch, batch_idx):
+        images = batch[0]
+        logits = self(images)
+        return torch.argmax(logits, dim=1)

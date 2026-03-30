@@ -12,7 +12,7 @@ from sklearn.model_selection import train_test_split
 
 from dataset.dataset import SegmentationDataset
 from models.deeplabv3 import build_deeplabv3plus
-from utils.albumentation import augment
+from utils.albumentation import augment, transform
 from utils.losses import FocalDiceLoss
 
 from typing import Any
@@ -80,9 +80,10 @@ class SegmentationModule(pl.LightningModule):
             full_dataset = SegmentationDataset(
                 images_dir = self.data_dir / "flair_1_toy_aerial_train",
                 masks_dir = self.data_dir / "flair_1_toy_labels_train",
-                augment = self.augment
+                augment = self.augment,
+                transform = transform
             )
-            print(f"len full data{len(full_dataset)}")
+            print(f"Lenght full dataset: {len(full_dataset)}")
             
             # Split dataset
             self.train_dataset, self.val_dataset = random_split(
@@ -90,6 +91,8 @@ class SegmentationModule(pl.LightningModule):
                 lengths = [0.8, 0.2],
                 generator = torch.Generator().manual_seed(42)
             )
+            print(f"Lenght training dataset: {len(self.train_dataset)}")
+            print(f"Lenght validation dataset: {len(self.val_dataset)}")
             
             # Set augment for val datasets to None
             self.val_dataset.augment = None
@@ -99,8 +102,10 @@ class SegmentationModule(pl.LightningModule):
             self.test_dataset = SegmentationDataset(
                 images_dir = self.data_dir / "flair_1_toy_aerial_test",
                 masks_dir = self.data_dir / "flair_1_toy_labels_test",
-                augment = None
+                augment = None,
+                transform=transform
             )
+            print(f"Lenght test dataset: {len(self.test_dataset)}")
             
             
     # Define dataloaders

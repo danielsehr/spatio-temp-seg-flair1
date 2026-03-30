@@ -13,7 +13,7 @@ image_output_dir = root / "flair_1_toy_aerial_train_NDVI"
 image_output_dir.mkdir(exist_ok=True)
 
 images = [p for p in image_input_dir.rglob("*.tif")]
-images = images[:20]
+# images = images[:20]
 print(len(images))
 
 
@@ -78,17 +78,11 @@ def add_ndvi(
             profile = src.profile.copy()
             profile.update(
                 dtype=rasterio.float32,
-                count=5,
+                count=6,
                 nodata=nodata,
                 compress='lzw'
             )
 
-            # # Create output folder
-            # subfolder = path.parent.stem
-            # file_folder = image_output_dir / subfolder
-            # file_folder.mkdir(exist_ok=True)
-
-            # output_path = file_folder / f"{path.stem}.tif"
 
             relative = path.relative_to(image_input_dir)
             
@@ -99,8 +93,10 @@ def add_ndvi(
             with rasterio.open(output_path, 'w', **profile) as dst:
                 dst.write(new_image.astype(np.float32))
 
+
     except Exception as e:
         print(f"[error] Failed to process {path}: {e}")
+
 
 for path in tqdm(images):
     add_ndvi(path_str=path)

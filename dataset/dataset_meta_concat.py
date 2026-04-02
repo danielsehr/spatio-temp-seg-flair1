@@ -30,14 +30,16 @@ class SegmentationDatasetMetaConcat(Dataset):
         assert len(self.images) == len(self.masks), "Mismatch lenght images/masks"
         
         # Metadata
-        with open(self.meta_json_dir) as f:
+        json_path = [p for p in Path(self.meta_json_dir).rglob("*.json")][0]
+        with open(json_path) as f:
             self.metadata = json.load(f)
+        
         
     def __len__(self) -> int:
         return(len(self.images))
     
     
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
+    def __getitem__(self, idx: int): #-> Tuple[torch.Tensor, torch.Tensor]:
         image_stem = self.images[idx].stem
         
         with rasterio.open(self.images[idx]) as src:
@@ -71,13 +73,14 @@ class SegmentationDatasetMetaConcat(Dataset):
         
         # Metadata
         meta = self.metadata[image_stem]
-        geo_hash = meta["geo_hash"]
-        date_hash = meta["date_hash"]
-        time_hash = meta["time_hash"]
+        # geo_hash = meta["geo_hash"]
+        # date_hash = meta["date_hash"]
+        # time_hash = meta["time_hash"]
+        
         
             
         return {
             "image_stem": image_stem,
             "image": image,
-            "mask": mask,
-        }
+            "mask": mask
+            }

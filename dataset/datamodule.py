@@ -182,6 +182,7 @@ class SegmentationModule(pl.LightningModule):
 
         return loss
 
+
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
             self.parameters(),

@@ -10,7 +10,8 @@ MOD3_serr.pdf
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
-dataset/__pycache__/
+dataset/__pycache__/*.pyc
+*.pyc
 *.py[codz]
 *$py.class
 

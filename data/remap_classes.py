@@ -3,9 +3,9 @@ from pathlib import Path
 import numpy as np
 
 # Config
-data_root = Path("C:/Users/serr_da/Documents/Datasets/flair_1_toy_dataset")
-masks_dir = data_root / "flair_1_toy_labels_test"      # folder with original masks
-output_dir = data_root / Path("flair_1_toy_labels_test_remap")     # folder to save remapped masks
+data_root = Path("C:/Users/Administrator/PythonProjects/landcover_classification/ML_datasets/FLAIR1/flair_1_toy_dataset")
+masks_dir = data_root / "flair_1_toy_labels_train"      # folder with original masks
+output_dir = data_root / Path("flair_1_toy_labels_train_remap")     # folder to save remapped masks
 
 remap_dict = {19: 0}  # remap class 19 -> 0
 
@@ -24,7 +24,6 @@ for mask_path in masks_dir.rglob("*.tif"):
 
     out_path = output_dir / relative
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    print(out_path)
 
     with rasterio.open(out_path, 'w', **profile) as dst:
         dst.write(mask, 1)

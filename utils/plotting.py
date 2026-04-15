@@ -86,8 +86,9 @@ def plot_image_mask(
 
 
     # Load data into lists
-    for images, masks in islice(data_loader, num_batches):
-        for image, mask in zip(images, masks):
+    
+    for dic in islice(data_loader, num_batches):
+        for image, mask in zip(dic["image"], dic["mask"]):
 
             if image.shape[0] > 3:
                 image = image[:3, ...]

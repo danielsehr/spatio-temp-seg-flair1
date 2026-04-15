@@ -2,6 +2,7 @@
 lightning_logs/
 .vscode/
 checkpoints/
+results/
 
 # Files
 *.pth

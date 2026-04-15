@@ -134,7 +134,6 @@ class SegmentationModule(pl.LightningModule):
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             pin_memory=True
-            
         )
     
 

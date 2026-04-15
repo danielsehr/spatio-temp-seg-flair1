@@ -30,7 +30,7 @@ class SegmentationDatasetMetaConcat(Dataset):
         assert len(self.images) == len(self.masks), "Mismatch lenght images/masks"
         
         # Metadata
-        json_path = [p for p in Path(self.meta_json_dir).rglob("*.json")][0]
+        json_path = [p for p in Path(self.meta_json_dir).rglob("*.json") if "_geohash" in str(p)][0]
         with open(json_path) as f:
             self.metadata = json.load(f)
         
@@ -72,15 +72,16 @@ class SegmentationDatasetMetaConcat(Dataset):
         
         
         # Metadata
-        meta = self.metadata[image_stem]
-        # geo_hash = meta["geo_hash"]
-        # date_hash = meta["date_hash"]
-        # time_hash = meta["time_hash"]
-        
-        
+        date = self.metadata[image_stem]["date"]
+        time = self.metadata[image_stem]["time"]
+        binary_geohash = torch.tensor(self.metadata[image_stem]["binary_geohash"])
+       
             
         return {
-            "image_stem": image_stem,
             "image": image,
-            "mask": mask
+            "mask": mask,
+            "image_stem": image_stem,
+            "date": date,
+            "time": time,
+            "binary_geohash": binary_geohash,
             }

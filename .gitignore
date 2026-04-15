@@ -7,7 +7,7 @@ results/
 # Files
 *.pth
 *.ckpt
-MOD3_serr.pdf
+*.qgz
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

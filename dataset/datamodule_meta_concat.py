@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import numpy as np
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -31,6 +33,7 @@ class DeepLabV3PlusMetaConcat(pl.LightningModule):
         batch_size: int,
         num_workers: int,
         ignore_index: int = 0,
+        learning_rate:float = 1e-03
         ):
         super().__init__()
 
@@ -43,6 +46,7 @@ class DeepLabV3PlusMetaConcat(pl.LightningModule):
         self.ignore_index = ignore_index
         self.batch_size = batch_size
         self.num_workers = num_workers
+        self.learning_rate = learning_rate
         self.save_hyperparameters()        
         
         
@@ -53,10 +57,11 @@ class DeepLabV3PlusMetaConcat(pl.LightningModule):
         )
         
         # Add dimension to conv2d layer in new segmentation head
-        new_in_channels = self.in_channels + self.meta_dim
+        seg_head_in_channels = int(self.model.segmentation_head[0].in_channels)
+        self.new_in_channels = seg_head_in_channels + self.meta_dim
         
         self.model.segmentation_head[0] = nn.Conv2d(
-            in_channels=new_in_channels, 
+            in_channels=self.new_in_channels, 
             out_channels=self.num_classes, 
             kernel_size=1
             )
@@ -148,7 +153,7 @@ class DeepLabV3PlusMetaConcat(pl.LightningModule):
             pin_memory=True
         )
         
-        
+    
     def forward(self, x, meta):
         # x: (B, C, H, W)
         # meta: (B, meta_dim)
@@ -157,10 +162,9 @@ class DeepLabV3PlusMetaConcat(pl.LightningModule):
         features = self.model.encoder(x)
         
         # Decoder
-        decoder_output = self.model.decoder(*features)
+        decoder_output = self.model.decoder(features)
         
         B, C, H, W = decoder_output.shape
-        
         
         # Expand meta to match spatial dimensions of x
         meta_expanded = meta.unsqueeze(-1).unsqueeze(-1)  # (B, meta_dim, 1, 1)
@@ -168,7 +172,6 @@ class DeepLabV3PlusMetaConcat(pl.LightningModule):
         
         # Concatenate along channel dimension
         x_concat = torch.cat([decoder_output, meta_expanded], dim=1)  # (B, C + meta_dim, H, W)
-        
         
         # Segmentation head
         return self.model.segmentation_head(x_concat)
@@ -178,6 +181,9 @@ class DeepLabV3PlusMetaConcat(pl.LightningModule):
         images = batch["image"]
         bin_gh = batch["binary_geohash"]
         masks = batch["mask"]
+        
+        print("train step:")
+        print("bin_gh:", bin_gh)
 
         logits = self(images, bin_gh)
         loss = self.criterion(logits, masks)
